@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Heading,
@@ -18,238 +18,380 @@ import {
   AlertIcon,
   Flex,
   useColorModeValue,
-  Radio,
-  RadioGroup,
-  Stack,
+  SimpleGrid,
+  Badge,
+  Spinner,
+  Container,
+  ButtonGroup,
+  useToast,
 } from "@chakra-ui/react";
 import { SearchIcon, InfoIcon } from "@chakra-ui/icons";
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaCode } from "react-icons/fa";
+import Dashboard from "./Dashboard"; // Import the Dashboard component
 
-// Mock standard profiles for development
-const standardProfiles = [
-  {
-    id: "1",
-    name: "Junior Frontend Developer",
-    description:
-      "Entry-level frontend developer with basic JavaScript and React knowledge",
-  },
-  {
-    id: "2",
-    name: "Mid-level Full Stack Developer",
-    description: "Experienced developer with frontend and backend skills",
-  },
-  {
-    id: "3",
-    name: "Senior Backend Developer",
-    description:
-      "Expert backend developer with system design and architecture experience",
-  },
-];
-
-const NewComparison = () => {
-  const [githubUsername, setGithubUsername] = useState("");
-  const [selectedProfile, setSelectedProfile] = useState("1");
+const GitHubSkillSearch = () => {
+  const [skills, setSkills] = useState("");
+  const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
   const [error, setError] = useState(null);
-
+  const [hireStatus, setHireStatus] = useState({});
+  // State to store hired candidates for the dashboard
+  const [hiredCandidates, setHiredCandidates] = useState([]);
+  const [showDashboard, setShowDashboard] = useState(false);
+  
+  const toast = useToast();
   const cardBg = useColorModeValue("white", "gray.700");
+  const badgeBg = useColorModeValue("brand.100", "brand.800");
+  const badgeColor = useColorModeValue("brand.800", "brand.100");
 
-  // Mock function to handle GitHub username search
-  const handleSearch = () => {
-    if (!githubUsername.trim()) {
-      setError("Please enter a GitHub username");
+  // Load any existing hiring decisions from localStorage on component mount
+  useEffect(() => {
+    const savedHiredCandidates = localStorage.getItem("hiredCandidates");
+    if (savedHiredCandidates) {
+      setHiredCandidates(JSON.parse(savedHiredCandidates));
+    }
+  }, []);
+
+  // Save hired candidates to localStorage whenever the state changes
+  useEffect(() => {
+    if (hiredCandidates.length > 0) {
+      localStorage.setItem("hiredCandidates", JSON.stringify(hiredCandidates));
+    }
+  }, [hiredCandidates]);
+
+  const searchUsers = async () => {
+    if (!skills.trim()) {
+      setError("Please enter at least one skill");
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setUsers([]);
+    setHireStatus({});
 
-    // Simulate API call with timeout
-    setTimeout(() => {
-      // Mock successful response
-      if (githubUsername.toLowerCase() !== "invalid") {
-        setPreviewData({
-          avatar_url: "https://via.placeholder.com/150",
-          name: "Prashant Palve",
-          login: githubUsername,
-          bio: "This is a mock GitHub profile for development purposes",
-          public_repos: 25,
-          followers: 120,
+    try {
+      const skillsArray = skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+      
+      // Fetch users for each skill
+      const results = await Promise.all(skillsArray.map(async (skill) => {
+        const response = await fetch(`https://api.github.com/search/users?q=${skill}+in:readme+in:description+language:${skill}&sort=followers&per_page=50`);
+        const data = await response.json();
+        return { skill, users: data.items || [] };
+      }));
+      
+      // Create map to track unique users and their skills
+      const userMap = new Map();
+      
+      results.forEach(({ skill, users }) => {
+        users.forEach(user => {
+          if (!userMap.has(user.login)) {
+            userMap.set(user.login, {
+              user,
+              skills: [skill]
+            });
+          } else {
+            userMap.get(user.login).skills.push(skill);
+          }
         });
-      } else {
-        setError("GitHub user not found");
-        setPreviewData(null);
+      });
+      
+      // Sort users by number of matching skills
+      const sortedUsers = Array.from(userMap.values())
+        .sort((a, b) => b.skills.length - a.skills.length);
+      
+      if (sortedUsers.length === 0) {
+        setUsers([]);
+        setIsLoading(false);
+        return;
       }
+      
+      // Get detailed information for top 10 users
+      const topUsers = sortedUsers.slice(0, 10);
+      
+      const detailedUsers = await Promise.all(topUsers.map(async ({ user, skills }) => {
+        const response = await fetch(`https://api.github.com/users/${user.login}`);
+        const userDetails = await response.json();
+        return { userDetails, skills };
+      }));
+      
+      setUsers(detailedUsers);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Error fetching data: " + error.message);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
-  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!previewData) {
-      handleSearch();
-      return;
-    }
+    searchUsers();
+  };
 
-    // Here you would navigate to results page with actual data
-    alert(
-      `Starting comparison for ${githubUsername} using profile ${selectedProfile}`
-    );
-    // In real implementation, you would:
-    // 1. Call your API to start the comparison process
-    // 2. Navigate to a loading or results page
+  const handleHireDecision = (userDetails, skills, decision) => {
+    setHireStatus(prev => ({
+      ...prev,
+      [userDetails.id]: decision
+    }));
+    
+    // If decision is "hire", add candidate to hiredCandidates array
+    if (decision === "hire") {
+      // Create a candidate object with formatted data for Dashboard
+      const candidate = {
+        id: userDetails.id,
+        name: userDetails.name,
+        login: userDetails.login,
+        skills: skills,
+        avatarUrl: userDetails.avatar_url,
+        bio: userDetails.bio,
+        url: userDetails.html_url,
+        repos: userDetails.public_repos,
+        followers: userDetails.followers,
+        decision: "hire",
+        dateAdded: new Date().toISOString()
+      };
+      
+      // Check if candidate already exists
+      const existingIndex = hiredCandidates.findIndex(c => c.id === userDetails.id);
+      
+      if (existingIndex >= 0) {
+        // Update existing candidate
+        const updatedCandidates = [...hiredCandidates];
+        updatedCandidates[existingIndex] = candidate;
+        setHiredCandidates(updatedCandidates);
+      } else {
+        // Add new candidate
+        setHiredCandidates(prev => [...prev, candidate]);
+      }
+      
+      toast({
+        title: "Candidate Added",
+        description: `${userDetails.name || userDetails.login} has been added to hiring list.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } else if (decision === "no-hire") {
+      // Remove the candidate from hired list if they were previously hired
+      setHiredCandidates(prev => prev.filter(candidate => candidate.id !== userDetails.id));
+      
+      toast({
+        title: "Candidate Removed",
+        description: `${userDetails.name || userDetails.login} has been removed from hiring list.`,
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const toggleView = () => {
+    setShowDashboard(!showDashboard);
   };
 
   return (
-    <Box>
-      <Heading size="xl" mb="2">
-        New Comparison
-      </Heading>
-      <Text color="gray.500" mb="8">
-        Compare a GitHub profile against standard developer profiles
-      </Text>
+    <Container maxW="container.xl" py={8}>
+      <Flex justifyContent="space-between" alignItems="center" mb="6">
+        <Heading size="xl">
+          {showDashboard ? "Dashboard" : "GitHub Skill Search"}
+        </Heading>
+        <Button 
+          colorScheme="brand" 
+          onClick={toggleView}
+        >
+          {showDashboard ? "Back to Search" : "View Dashboard"}
+        </Button>
+      </Flex>
 
-      <form onSubmit={handleSubmit}>
-        <VStack spacing="8" align="stretch">
-          {/* GitHub Username Input */}
-          <Card bg={cardBg} boxShadow="md">
-            <CardBody>
-              <Heading size="md" mb="4" display="flex" alignItems="center">
-                <Icon as={FaGithub} mr="2" />
-                GitHub Profile
-              </Heading>
+      {showDashboard ? (
+        <Dashboard hiredCandidates={hiredCandidates} />
+      ) : (
+        <Box>
+          <Text color="gray.500" mb="8">
+            Find top GitHub users based on programming skills
+          </Text>
 
-              <FormControl isRequired mb="4">
-                <FormLabel>GitHub Username</FormLabel>
-                <HStack>
-                  <Input
-                    placeholder="e.g., octocat"
-                    value={githubUsername}
-                    onChange={(e) => setGithubUsername(e.target.value)}
-                  />
-                  <Button
-                    leftIcon={<SearchIcon />}
-                    colorScheme="brand"
-                    isLoading={isLoading}
-                    onClick={handleSearch}
-                  >
-                    Search
-                  </Button>
-                </HStack>
-              </FormControl>
+          <form onSubmit={handleSubmit}>
+            <VStack spacing="8" align="stretch">
+              {/* Skills Input */}
+              <Card bg={cardBg} boxShadow="md">
+                <CardBody>
+                  <Heading size="md" mb="4" display="flex" alignItems="center">
+                    <Icon as={FaCode} mr="2" />
+                    Skills Search
+                  </Heading>
 
-              {error && (
-                <Alert status="error" borderRadius="md">
-                  <AlertIcon />
-                  {error}
+                  <FormControl isRequired mb="4">
+                    <FormLabel>Programming Skills</FormLabel>
+                    <HStack>
+                      <Input
+                        placeholder="e.g., javascript, react, node"
+                        value={skills}
+                        onChange={(e) => setSkills(e.target.value)}
+                      />
+                      <Button
+                        leftIcon={<SearchIcon />}
+                        colorScheme="brand"
+                        isLoading={isLoading}
+                        onClick={searchUsers}
+                        type="submit"
+                      >
+                        Search
+                      </Button>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.500" mt="2">
+                      Enter skills separated by commas (e.g., javascript, react, python)
+                    </Text>
+                  </FormControl>
+
+                  {error && (
+                    <Alert status="error" borderRadius="md">
+                      <AlertIcon />
+                      {error}
+                    </Alert>
+                  )}
+                </CardBody>
+              </Card>
+
+              {/* Loading indicator */}
+              {isLoading && (
+                <Flex justify="center" align="center" direction="column" py={6}>
+                  <Spinner size="xl" color="brand.500" mb={4} />
+                  <Text>Searching for top GitHub users with these skills...</Text>
+                </Flex>
+              )}
+
+              {/* Results */}
+              {!isLoading && users.length > 0 && (
+                <Card bg={cardBg} boxShadow="md">
+                  <CardBody>
+                    <Heading size="md" mb="4" display="flex" alignItems="center">
+                      <Icon as={FaGithub} mr="2" />
+                      Top Users ({users.length})
+                    </Heading>
+                    
+                    <Divider mb="6" />
+                    
+                    <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                      {users.map(({ userDetails, skills }) => (
+                        <Card 
+                          key={userDetails.id} 
+                          variant="outline" 
+                          overflow="hidden"
+                          borderColor={
+                            hireStatus[userDetails.id] === "hire" 
+                              ? "green.400" 
+                              : hireStatus[userDetails.id] === "no-hire" 
+                                ? "red.400" 
+                                : "gray.200"
+                          }
+                          borderWidth={hireStatus[userDetails.id] ? "2px" : "1px"}
+                        >
+                          <CardBody>
+                            <Flex>
+                              <Image
+                                src={userDetails.avatar_url}
+                                alt={userDetails.login}
+                                boxSize="80px"
+                                borderRadius="full"
+                                mr="4"
+                              />
+                              <Box>
+                                <Heading size="md">{userDetails.name || userDetails.login}</Heading>
+                                <Text color="gray.500">@{userDetails.login}</Text>
+                                {userDetails.bio && (
+                                  <Text mt="2" fontSize="sm" noOfLines={2}>
+                                    {userDetails.bio}
+                                  </Text>
+                                )}
+                                <HStack mt="2" spacing="4">
+                                  <Text fontSize="sm">
+                                    {userDetails.public_repos || 0} repos
+                                  </Text>
+                                  <Text fontSize="sm">
+                                    {userDetails.followers || 0} followers
+                                  </Text>
+                                </HStack>
+                              </Box>
+                            </Flex>
+                            
+                            <Divider my="3" />
+                            
+                            <Box>
+                              <Text fontSize="sm" fontWeight="bold" mb="2">
+                                Matching Skills:
+                              </Text>
+                              <Flex wrap="wrap" gap="2">
+                                {skills.map((skill, index) => (
+                                  <Badge
+                                    key={index}
+                                    bg={badgeBg}
+                                    color={badgeColor}
+                                    px="2"
+                                    py="1"
+                                    borderRadius="full"
+                                  >
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </Flex>
+                            </Box>
+                            
+                            <Flex mt="4" direction="column" gap="2">
+                              <Button
+                                as="a"
+                                href={userDetails.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                size="sm"
+                                colorScheme="brand"
+                                w="full"
+                              >
+                                View Profile
+                              </Button>
+                              
+                              <ButtonGroup isAttached width="full" mt="2">
+                                <Button 
+                                  colorScheme="green" 
+                                  flex="1"
+                                  size="sm"
+                                  onClick={() => handleHireDecision(userDetails, skills, "hire")}
+                                  variant={hireStatus[userDetails.id] === "hire" ? "solid" : "outline"}
+                                >
+                                  Hire
+                                </Button>
+                                <Button 
+                                  colorScheme="red" 
+                                  flex="1"
+                                  size="sm"
+                                  onClick={() => handleHireDecision(userDetails, skills, "no-hire")}
+                                  variant={hireStatus[userDetails.id] === "no-hire" ? "solid" : "outline"}
+                                >
+                                  No Hire
+                                </Button>
+                              </ButtonGroup>
+                            </Flex>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    </SimpleGrid>
+                  </CardBody>
+                </Card>
+              )}
+
+              {!isLoading && !error && users.length === 0 && skills.trim() && (
+                <Alert status="info" borderRadius="md">
+                  <AlertIcon as={InfoIcon} />
+                  No users found with these skills. Try different skill combinations or check your spelling.
                 </Alert>
               )}
-
-              {previewData && (
-                <Box mt="4">
-                  <Divider mb="4" />
-                  <Flex>
-                    <Image
-                      src={previewData.avatar_url}
-                      alt={previewData.login}
-                      boxSize="80px"
-                      borderRadius="full"
-                      mr="4"
-                    />
-                    <Box>
-                      <Heading size="md">{previewData.name}</Heading>
-                      <Text color="gray.500">@{previewData.login}</Text>
-                      <Text mt="2">{previewData.bio}</Text>
-                      <HStack mt="2" spacing="4">
-                        <Text fontSize="sm">
-                          {previewData.public_repos} repositories
-                        </Text>
-                        <Text fontSize="sm">
-                          {previewData.followers} followers
-                        </Text>
-                      </HStack>
-                    </Box>
-                  </Flex>
-                </Box>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* Standard Profile Selection */}
-          <Card bg={cardBg} boxShadow="md">
-            <CardBody>
-              <Heading size="md" mb="4">
-                Select Standard Profile
-              </Heading>
-              <Text mb="4">
-                Choose a standard profile to compare against. Each profile
-                represents different expectations for a specific role or
-                experience level.
-              </Text>
-
-              <FormControl as="fieldset" isRequired>
-                <FormLabel as="legend">Standard Profile</FormLabel>
-                <RadioGroup
-                  value={selectedProfile}
-                  onChange={setSelectedProfile}
-                >
-                  <Stack spacing="4">
-                    {standardProfiles.map((profile) => (
-                      <Card
-                        key={profile.id}
-                        variant="outline"
-                        borderColor={
-                          selectedProfile === profile.id
-                            ? "brand.500"
-                            : "gray.200"
-                        }
-                        borderWidth={
-                          selectedProfile === profile.id ? "2px" : "1px"
-                        }
-                      >
-                        <CardBody py="3">
-                          <Radio value={profile.id} colorScheme="brand">
-                            <Box ml="2">
-                              <Text fontWeight="bold">{profile.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {profile.description}
-                              </Text>
-                            </Box>
-                          </Radio>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </Stack>
-                </RadioGroup>
-              </FormControl>
-            </CardBody>
-          </Card>
-
-          {/* Submit Button */}
-          <Flex justifyContent="center">
-            <Button
-              type="submit"
-              colorScheme="brand"
-              size="lg"
-              px="12"
-              isDisabled={!githubUsername.trim() || isLoading}
-              isLoading={isLoading}
-            >
-              Start Comparison
-            </Button>
-          </Flex>
-
-          <Alert status="info" borderRadius="md">
-            <AlertIcon as={InfoIcon} />
-            This will analyze the GitHub profile and compare it against the
-            selected standard profile. The process may take a few seconds.
-          </Alert>
-        </VStack>
-      </form>
-    </Box>
+            </VStack>
+          </form>
+        </Box>
+      )}
+    </Container>
   );
 };
 
-export default NewComparison;
+export default GitHubSkillSearch;
