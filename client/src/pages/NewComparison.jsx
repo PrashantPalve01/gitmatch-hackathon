@@ -71,7 +71,7 @@ const NewComparison = () => {
       if (githubUsername.toLowerCase() !== "invalid") {
         setPreviewData({
           avatar_url: "https://via.placeholder.com/150",
-          name: "Demo User",
+          name: "Prashant Palve",
           login: githubUsername,
           bio: "This is a mock GitHub profile for development purposes",
           public_repos: 25,
