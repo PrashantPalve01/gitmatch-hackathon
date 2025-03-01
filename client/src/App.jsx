@@ -6,14 +6,13 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import theme from "./ChakraTheme";
 
 // Import components
-import Layout from "../../../Layout";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import NewComparison from "./pages/NewComparison";
+import ResultsPage from "./pages/ResultsPage";
+import Settings from "./pages/Settings";
 
 // Import pages
-import Dashboard from "../../../Dashboard";
-import NewComparison from "../../../NewComparison";
-import ResultsPage from "../../../ResultsPage";
-import Settings from "../../../Settings";
-
 function App() {
   return (
     <ChakraProvider theme={theme}>
