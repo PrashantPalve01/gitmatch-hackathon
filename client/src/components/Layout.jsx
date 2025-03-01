@@ -9,10 +9,8 @@ const Layout = ({ children }) => {
     <Box minH="100vh" bg={bgColor}>
       <Header />
       <Container maxW="container.xl" pt="20" pb="10">
-        <Box width="100%">
-          {" "}
-          {/* Ensure content takes full width */}
-          <Box as="main" width="100%" py="6">
+        <Flex direction="column" flex="1">
+          <Box as="main" flex="1" py="6">
             {children}
           </Box>
           <Box
@@ -24,7 +22,7 @@ const Layout = ({ children }) => {
           >
             © {new Date().getFullYear()} GitHub Recruiter. All rights reserved.
           </Box>
-        </Box>
+        </Flex>
       </Container>
     </Box>
   );
