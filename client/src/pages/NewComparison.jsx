@@ -18,9 +18,12 @@ import {
   AlertIcon,
   Flex,
   useColorModeValue,
-  Radio,
-  RadioGroup,
-  Stack,
+  SimpleGrid,
+  Badge,
+  Spinner,
+  Container,
+  ButtonGroup,
+  useToast,
 } from "@chakra-ui/react";
 import { SearchIcon, InfoIcon } from "@chakra-ui/icons";
 import { FaGithub } from "react-icons/fa";
@@ -42,7 +45,16 @@ const NewComparison = () => {
 
   const navigate = useNavigate();
   const cardBg = useColorModeValue("white", "gray.700");
+  const badgeBg = useColorModeValue("brand.100", "brand.800");
+  const badgeColor = useColorModeValue("brand.800", "brand.100");
 
+  // Load any existing hiring decisions from localStorage on component mount
+  useEffect(() => {
+    const savedHiredCandidates = localStorage.getItem("hiredCandidates");
+    if (savedHiredCandidates) {
+      setHiredCandidates(JSON.parse(savedHiredCandidates));
+    }
+  }, []);
   // Fetch standard profiles on component mount
   useEffect(() => {
     const fetchStandardProfiles = async () => {
@@ -70,6 +82,8 @@ const NewComparison = () => {
 
     setIsSearching(true);
     setError(null);
+    setUsers([]);
+    setHireStatus({});
 
     try {
       const profileData = await getGitHubProfile(githubUsername);
@@ -86,11 +100,65 @@ const NewComparison = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!previewData) {
-      handleSearch();
-      return;
-    }
+    searchUsers();
+  };
 
+  const handleHireDecision = (userDetails, skills, decision) => {
+    setHireStatus(prev => ({
+      ...prev,
+      [userDetails.id]: decision
+    }));
+    
+    // If decision is "hire", add candidate to hiredCandidates array
+    if (decision === "hire") {
+      // Create a candidate object with formatted data for Dashboard
+      const candidate = {
+        id: userDetails.id,
+        name: userDetails.name,
+        login: userDetails.login,
+        skills: skills,
+        avatarUrl: userDetails.avatar_url,
+        bio: userDetails.bio,
+        url: userDetails.html_url,
+        repos: userDetails.public_repos,
+        followers: userDetails.followers,
+        decision: "hire",
+        dateAdded: new Date().toISOString()
+      };
+      
+      // Check if candidate already exists
+      const existingIndex = hiredCandidates.findIndex(c => c.id === userDetails.id);
+      
+      if (existingIndex >= 0) {
+        // Update existing candidate
+        const updatedCandidates = [...hiredCandidates];
+        updatedCandidates[existingIndex] = candidate;
+        setHiredCandidates(updatedCandidates);
+      } else {
+        // Add new candidate
+        setHiredCandidates(prev => [...prev, candidate]);
+      }
+      
+      toast({
+        title: "Candidate Added",
+        description: `${userDetails.name || userDetails.login} has been added to hiring list.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } else if (decision === "no-hire") {
+      // Remove the candidate from hired list if they were previously hired
+      setHiredCandidates(prev => prev.filter(candidate => candidate.id !== userDetails.id));
+      
+      toast({
+        title: "Candidate Removed",
+        description: `${userDetails.name || userDetails.login} has been removed from hiring list.`,
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
     if (!selectedProfile) {
       setError("Please select a standard profile");
       return;
@@ -225,13 +293,105 @@ const NewComparison = () => {
                           selectedProfile === profile.id ? "2px" : "1px"
                         }
                       >
-                        <CardBody py="3">
-                          <Radio value={profile.id} colorScheme="brand">
-                            <Box ml="2">
-                              <Text fontWeight="bold">{profile.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {profile.description}
+                        Search
+                      </Button>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.500" mt="2">
+                      Enter skills separated by commas (e.g., javascript, react, python)
+                    </Text>
+                  </FormControl>
+
+                  {error && (
+                    <Alert status="error" borderRadius="md">
+                      <AlertIcon />
+                      {error}
+                    </Alert>
+                  )}
+                </CardBody>
+              </Card>
+
+              {/* Loading indicator */}
+              {isLoading && (
+                <Flex justify="center" align="center" direction="column" py={6}>
+                  <Spinner size="xl" color="brand.500" mb={4} />
+                  <Text>Searching for top GitHub users with these skills...</Text>
+                </Flex>
+              )}
+
+              {/* Results */}
+              {!isLoading && users.length > 0 && (
+                <Card bg={cardBg} boxShadow="md">
+                  <CardBody>
+                    <Heading size="md" mb="4" display="flex" alignItems="center">
+                      <Icon as={FaGithub} mr="2" />
+                      Top Users ({users.length})
+                    </Heading>
+                    
+                    <Divider mb="6" />
+                    
+                    <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                      {users.map(({ userDetails, skills }) => (
+                        <Card 
+                          key={userDetails.id} 
+                          variant="outline" 
+                          overflow="hidden"
+                          borderColor={
+                            hireStatus[userDetails.id] === "hire" 
+                              ? "green.400" 
+                              : hireStatus[userDetails.id] === "no-hire" 
+                                ? "red.400" 
+                                : "gray.200"
+                          }
+                          borderWidth={hireStatus[userDetails.id] ? "2px" : "1px"}
+                        >
+                          <CardBody>
+                            <Flex>
+                              <Image
+                                src={userDetails.avatar_url}
+                                alt={userDetails.login}
+                                boxSize="80px"
+                                borderRadius="full"
+                                mr="4"
+                              />
+                              <Box>
+                                <Heading size="md">{userDetails.name || userDetails.login}</Heading>
+                                <Text color="gray.500">@{userDetails.login}</Text>
+                                {userDetails.bio && (
+                                  <Text mt="2" fontSize="sm" noOfLines={2}>
+                                    {userDetails.bio}
+                                  </Text>
+                                )}
+                                <HStack mt="2" spacing="4">
+                                  <Text fontSize="sm">
+                                    {userDetails.public_repos || 0} repos
+                                  </Text>
+                                  <Text fontSize="sm">
+                                    {userDetails.followers || 0} followers
+                                  </Text>
+                                </HStack>
+                              </Box>
+                            </Flex>
+                            
+                            <Divider my="3" />
+                            
+                            <Box>
+                              <Text fontSize="sm" fontWeight="bold" mb="2">
+                                Matching Skills:
                               </Text>
+                              <Flex wrap="wrap" gap="2">
+                                {skills.map((skill, index) => (
+                                  <Badge
+                                    key={index}
+                                    bg={badgeBg}
+                                    color={badgeColor}
+                                    px="2"
+                                    py="1"
+                                    borderRadius="full"
+                                  >
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </Flex>
                             </Box>
                           </Radio>
                         </CardBody>
