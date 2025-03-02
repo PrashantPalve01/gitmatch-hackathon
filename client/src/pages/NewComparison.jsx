@@ -1,271 +1,185 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Heading,
   Text,
-  FormControl,
-  FormLabel,
-  Input,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
   Button,
-  VStack,
-  HStack,
-  Card,
-  CardBody,
-  Divider,
-  Icon,
-  Image,
-  Alert,
-  AlertIcon,
   Flex,
-  useColorModeValue,
-  Radio,
-  RadioGroup,
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Icon,
   Stack,
+  Divider,
+  Badge,
+  useColorModeValue,
 } from "@chakra-ui/react";
-import { SearchIcon, InfoIcon } from "@chakra-ui/icons";
-import { FaGithub } from "react-icons/fa";
-import {
-  getGitHubProfile,
-  getStandardProfiles,
-  createComparison,
-} from "../services/api";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
+import { AddIcon, CheckIcon, CloseIcon, TimeIcon } from "@chakra-ui/icons";
+import { FaGithub, FaUserAlt, FaCode } from "react-icons/fa";
 
-const NewComparison = () => {
-  const [githubUsername, setGithubUsername] = useState("");
-  const [selectedProfile, setSelectedProfile] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [error, setError] = useState(null);
-  const [standardProfiles, setStandardProfiles] = useState([]);
+// Mock data for initial development
+const mockRecentComparisons = [
+  {
+    id: "1",
+    candidateName: "John Doe",
+    githubUsername: "johndoe123",
+    date: "2023-01-15",
+    result: "hire",
+    score: 85,
+    mainLanguage: "JavaScript",
+  },
+  {
+    id: "2",
+    candidateName: "Jane Smith",
+    githubUsername: "janesmith456",
+    date: "2023-01-14",
+    result: "no-hire",
+    score: 42,
+    mainLanguage: "Python",
+  },
+  {
+    id: "3",
+    candidateName: "Bob Johnson",
+    githubUsername: "bjohnson789",
+    date: "2023-01-13",
+    result: "hire",
+    score: 78,
+    mainLanguage: "Java",
+  },
+];
 
-  const navigate = useNavigate();
+const Dashboard = () => {
+  const [recentComparisons] = useState(mockRecentComparisons);
+
   const cardBg = useColorModeValue("white", "gray.700");
-
-  // Fetch standard profiles on component mount
-  useEffect(() => {
-    const fetchStandardProfiles = async () => {
-      try {
-        const profiles = await getStandardProfiles();
-        setStandardProfiles(profiles);
-        if (profiles.length > 0) {
-          setSelectedProfile(profiles[0].id);
-        }
-      } catch (err) {
-        console.error("Failed to fetch standard profiles:", err);
-        setError("Failed to load standard profiles. Please try again later.");
-      }
-    };
-
-    fetchStandardProfiles();
-  }, []);
-
-  // Handle GitHub username search
-  const handleSearch = async () => {
-    if (!githubUsername.trim()) {
-      setError("Please enter a GitHub username");
-      return;
-    }
-
-    setIsSearching(true);
-    setError(null);
-
-    try {
-      const profileData = await getGitHubProfile(githubUsername);
-      setPreviewData(profileData);
-    } catch (err) {
-      console.error("Error fetching GitHub profile:", err);
-      setError("GitHub user not found");
-      setPreviewData(null);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!previewData) {
-      handleSearch();
-      return;
-    }
-
-    if (!selectedProfile) {
-      setError("Please select a standard profile");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Create a new comparison
-      const result = await createComparison({
-        githubUsername: githubUsername,
-        standardProfileId: selectedProfile,
-      });
-
-      // Navigate to results page with the comparison ID
-      navigate(`/results/${result.id}`);
-    } catch (err) {
-      console.error("Error creating comparison:", err);
-      setError("Failed to create comparison. Please try again.");
-      setIsLoading(false);
-    }
-  };
+  const statCardBg = useColorModeValue("brand.50", "gray.800");
 
   return (
     <Box>
-      <Heading size="xl" mb="2">
-        New Comparison
-      </Heading>
-      <Text color="gray.500" mb="8">
-        Compare a GitHub profile against standard developer profiles
-      </Text>
+      <Flex justifyContent="space-between" alignItems="center" mb="8">
+        <Box>
+          <Heading size="xl" mb="2">
+            Dashboard
+          </Heading>
+          <Text color="gray.500">
+            Overview of your GitHub recruitment activities
+          </Text>
+        </Box>
+        <Button
+          as={RouterLink}
+          to="/new-comparison"
+          colorScheme="brand"
+          leftIcon={<AddIcon />}
+          size="lg"
+        >
+          New Comparison
+        </Button>
+      </Flex>
 
-      <form onSubmit={handleSubmit}>
-        <VStack spacing="8" align="stretch">
-          {/* GitHub Username Input */}
-          <Card bg={cardBg} boxShadow="md">
-            <CardBody>
-              <Heading size="md" mb="4" display="flex" alignItems="center">
-                <Icon as={FaGithub} mr="2" />
-                GitHub Profile
-              </Heading>
+      {/* Stats Section */}
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6" mb="8">
+        <Stat bg={statCardBg} p="5" borderRadius="lg" boxShadow="md">
+          <StatLabel fontSize="lg" display="flex" alignItems="center">
+            <Icon as={FaUserAlt} mr="2" /> Total Candidates
+          </StatLabel>
+          <StatNumber fontSize="3xl">24</StatNumber>
+          <StatHelpText>Since January 2023</StatHelpText>
+        </Stat>
 
-              <FormControl isRequired mb="4">
-                <FormLabel>GitHub Username</FormLabel>
-                <HStack>
-                  <Input
-                    placeholder="e.g., octocat"
-                    value={githubUsername}
-                    onChange={(e) => setGithubUsername(e.target.value)}
-                  />
-                  <Button
-                    leftIcon={<SearchIcon />}
-                    colorScheme="brand"
-                    isLoading={isSearching}
-                    onClick={handleSearch}
+        <Stat bg={statCardBg} p="5" borderRadius="lg" boxShadow="md">
+          <StatLabel fontSize="lg" display="flex" alignItems="center">
+            <Icon as={CheckIcon} mr="2" /> Hire Recommendations
+          </StatLabel>
+          <StatNumber fontSize="3xl">16</StatNumber>
+          <StatHelpText>
+            <Badge colorScheme="green">67% of total</Badge>
+          </StatHelpText>
+        </Stat>
+
+        <Stat bg={statCardBg} p="5" borderRadius="lg" boxShadow="md">
+          <StatLabel fontSize="lg" display="flex" alignItems="center">
+            <Icon as={FaCode} mr="2" /> Top Language
+          </StatLabel>
+          <StatNumber fontSize="3xl">JavaScript</StatNumber>
+          <StatHelpText>Among recommended hires</StatHelpText>
+        </Stat>
+      </SimpleGrid>
+
+      {/* Recent Comparisons */}
+      <Box mb="10">
+        <Heading size="lg" mb="4">
+          Recent Comparisons
+        </Heading>
+        <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6">
+          {recentComparisons.map((comparison) => (
+            <Card key={comparison.id} bg={cardBg} boxShadow="md">
+              <CardHeader pb="2">
+                <Flex justify="space-between" align="center">
+                  <Heading size="md">{comparison.candidateName}</Heading>
+                  <Badge
+                    colorScheme={comparison.result === "hire" ? "green" : "red"}
+                    fontSize="sm"
+                    px="2"
+                    py="1"
+                    borderRadius="md"
                   >
-                    Search
-                  </Button>
-                </HStack>
-              </FormControl>
-
-              {error && (
-                <Alert status="error" borderRadius="md">
-                  <AlertIcon />
-                  {error}
-                </Alert>
-              )}
-
-              {previewData && (
-                <Box mt="4">
-                  <Divider mb="4" />
-                  <Flex>
-                    <Image
-                      src={previewData.avatar_url}
-                      alt={previewData.login}
-                      boxSize="80px"
-                      borderRadius="full"
-                      mr="4"
-                    />
-                    <Box>
-                      <Heading size="md">
-                        {previewData.name || previewData.login}
-                      </Heading>
-                      <Text color="gray.500">@{previewData.login}</Text>
-                      <Text mt="2">
-                        {previewData.bio || "No bio available"}
-                      </Text>
-                      <HStack mt="2" spacing="4">
-                        <Text fontSize="sm">
-                          {previewData.public_repos} repositories
-                        </Text>
-                        <Text fontSize="sm">
-                          {previewData.followers} followers
-                        </Text>
-                      </HStack>
-                    </Box>
-                  </Flex>
-                </Box>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* Standard Profile Selection */}
-          <Card bg={cardBg} boxShadow="md">
-            <CardBody>
-              <Heading size="md" mb="4">
-                Select Standard Profile
-              </Heading>
-              <Text mb="4">
-                Choose a standard profile to compare against. Each profile
-                represents different expectations for a specific role or
-                experience level.
-              </Text>
-
-              <FormControl as="fieldset" isRequired>
-                <FormLabel as="legend">Standard Profile</FormLabel>
-                <RadioGroup
-                  value={selectedProfile}
-                  onChange={setSelectedProfile}
+                    {comparison.result === "hire" ? "HIRE" : "NO HIRE"}
+                  </Badge>
+                </Flex>
+                <Text
+                  color="gray.500"
+                  fontSize="sm"
+                  display="flex"
+                  alignItems="center"
                 >
-                  <Stack spacing="4">
-                    {standardProfiles.map((profile) => (
-                      <Card
-                        key={profile.id}
-                        variant="outline"
-                        borderColor={
-                          selectedProfile === profile.id
-                            ? "brand.500"
-                            : "gray.200"
-                        }
-                        borderWidth={
-                          selectedProfile === profile.id ? "2px" : "1px"
-                        }
-                      >
-                        <CardBody py="3">
-                          <Radio value={profile.id} colorScheme="brand">
-                            <Box ml="2">
-                              <Text fontWeight="bold">{profile.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {profile.description}
-                              </Text>
-                            </Box>
-                          </Radio>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </Stack>
-                </RadioGroup>
-              </FormControl>
-            </CardBody>
-          </Card>
-
-          {/* Submit Button */}
-          <Flex justifyContent="center">
-            <Button
-              type="submit"
-              colorScheme="brand"
-              size="lg"
-              px="12"
-              isDisabled={!previewData || isLoading || !selectedProfile}
-              isLoading={isLoading}
-            >
-              Start Comparison
-            </Button>
-          </Flex>
-
-          <Alert status="info" borderRadius="md">
-            <AlertIcon as={InfoIcon} />
-            This will analyze the GitHub profile and compare it against the
-            selected standard profile. The process may take a few seconds.
-          </Alert>
-        </VStack>
-      </form>
+                  <Icon as={FaGithub} mr="1" /> {comparison.githubUsername}
+                </Text>
+              </CardHeader>
+              <CardBody py="2">
+                <Stack spacing="2">
+                  <Flex justify="space-between">
+                    <Text fontWeight="medium">Score</Text>
+                    <Text>{comparison.score}/100</Text>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text fontWeight="medium">Main Language</Text>
+                    <Text>{comparison.mainLanguage}</Text>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text fontWeight="medium">Date</Text>
+                    <Text display="flex" alignItems="center">
+                      <Icon as={TimeIcon} mr="1" fontSize="xs" />
+                      {comparison.date}
+                    </Text>
+                  </Flex>
+                </Stack>
+              </CardBody>
+              <Divider />
+              <CardFooter pt="3">
+                <Button
+                  as={RouterLink}
+                  to={`/results/${comparison.id}`}
+                  colorScheme="brand"
+                  variant="outline"
+                  size="sm"
+                  width="full"
+                >
+                  View Details
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </SimpleGrid>
+      </Box>
     </Box>
   );
 };
 
-export default NewComparison;
+export default Dashboard;
