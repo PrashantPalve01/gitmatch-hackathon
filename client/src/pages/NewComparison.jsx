@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Heading,
@@ -24,82 +24,94 @@ import {
 } from "@chakra-ui/react";
 import { SearchIcon, InfoIcon } from "@chakra-ui/icons";
 import { FaGithub } from "react-icons/fa";
-
-// Mock standard profiles for development
-const standardProfiles = [
-  {
-    id: "1",
-    name: "Junior Frontend Developer",
-    description:
-      "Entry-level frontend developer with basic JavaScript and React knowledge",
-  },
-  {
-    id: "2",
-    name: "Mid-level Full Stack Developer",
-    description: "Experienced developer with frontend and backend skills",
-  },
-  {
-    id: "3",
-    name: "Senior Backend Developer",
-    description:
-      "Expert backend developer with system design and architecture experience",
-  },
-];
+import {
+  getGitHubProfile,
+  getStandardProfiles,
+  createComparison,
+} from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 const NewComparison = () => {
   const [githubUsername, setGithubUsername] = useState("");
-  const [selectedProfile, setSelectedProfile] = useState("1");
+  const [selectedProfile, setSelectedProfile] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [error, setError] = useState(null);
+  const [standardProfiles, setStandardProfiles] = useState([]);
 
+  const navigate = useNavigate();
   const cardBg = useColorModeValue("white", "gray.700");
 
-  // Mock function to handle GitHub username search
-  const handleSearch = () => {
+  // Fetch standard profiles on component mount
+  useEffect(() => {
+    const fetchStandardProfiles = async () => {
+      try {
+        const profiles = await getStandardProfiles();
+        setStandardProfiles(profiles);
+        if (profiles.length > 0) {
+          setSelectedProfile(profiles[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch standard profiles:", err);
+        setError("Failed to load standard profiles. Please try again later.");
+      }
+    };
+
+    fetchStandardProfiles();
+  }, []);
+
+  // Handle GitHub username search
+  const handleSearch = async () => {
     if (!githubUsername.trim()) {
       setError("Please enter a GitHub username");
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
     setError(null);
 
-    // Simulate API call with timeout
-    setTimeout(() => {
-      // Mock successful response
-      if (githubUsername.toLowerCase() !== "invalid") {
-        setPreviewData({
-          avatar_url: "https://via.placeholder.com/150",
-          name: "Prashant Palve",
-          login: githubUsername,
-          bio: "This is a mock GitHub profile for development purposes",
-          public_repos: 25,
-          followers: 120,
-        });
-      } else {
-        setError("GitHub user not found");
-        setPreviewData(null);
-      }
-      setIsLoading(false);
-    }, 1000);
+    try {
+      const profileData = await getGitHubProfile(githubUsername);
+      setPreviewData(profileData);
+    } catch (err) {
+      console.error("Error fetching GitHub profile:", err);
+      setError("GitHub user not found");
+      setPreviewData(null);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!previewData) {
       handleSearch();
       return;
     }
 
-    // Here you would navigate to results page with actual data
-    alert(
-      `Starting comparison for ${githubUsername} using profile ${selectedProfile}`
-    );
-    // In real implementation, you would:
-    // 1. Call your API to start the comparison process
-    // 2. Navigate to a loading or results page
+    if (!selectedProfile) {
+      setError("Please select a standard profile");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Create a new comparison
+      const result = await createComparison({
+        githubUsername: githubUsername,
+        standardProfileId: selectedProfile,
+      });
+
+      // Navigate to results page with the comparison ID
+      navigate(`/results/${result.id}`);
+    } catch (err) {
+      console.error("Error creating comparison:", err);
+      setError("Failed to create comparison. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -132,7 +144,7 @@ const NewComparison = () => {
                   <Button
                     leftIcon={<SearchIcon />}
                     colorScheme="brand"
-                    isLoading={isLoading}
+                    isLoading={isSearching}
                     onClick={handleSearch}
                   >
                     Search
@@ -159,9 +171,13 @@ const NewComparison = () => {
                       mr="4"
                     />
                     <Box>
-                      <Heading size="md">{previewData.name}</Heading>
+                      <Heading size="md">
+                        {previewData.name || previewData.login}
+                      </Heading>
                       <Text color="gray.500">@{previewData.login}</Text>
-                      <Text mt="2">{previewData.bio}</Text>
+                      <Text mt="2">
+                        {previewData.bio || "No bio available"}
+                      </Text>
                       <HStack mt="2" spacing="4">
                         <Text fontSize="sm">
                           {previewData.public_repos} repositories
@@ -234,7 +250,7 @@ const NewComparison = () => {
               colorScheme="brand"
               size="lg"
               px="12"
-              isDisabled={!githubUsername.trim() || isLoading}
+              isDisabled={!previewData || isLoading || !selectedProfile}
               isLoading={isLoading}
             >
               Start Comparison

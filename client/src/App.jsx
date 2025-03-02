@@ -11,7 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import NewComparison from "./pages/NewComparison";
 import ResultsPage from "./pages/ResultsPage";
 import Settings from "./pages/Settings";
-
 // Import pages
 function App() {
   return (
