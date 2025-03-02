@@ -1,8 +1,5 @@
 # GitHub Recruiter Tool
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Live Demo](https://img.shields.io/badge/demo-online-green.svg)](https://github-recruiter.example.com)
-
 A powerful tool built during a 48-hour hackathon to help technical recruiters evaluate GitHub profiles and make data-driven hiring decisions.
 
 ## 🔗 Live Demo
@@ -44,7 +41,7 @@ GitHub Recruiter Tool analyzes GitHub user profiles to provide quantitative metr
 
    ```bash
    https://github.com/PrashantPalve01/gitmatch-hackathon
-   cd gitmatch-hack
+   cd gitmatch-hackathon
    ```
 
 2. Install dependencies for both frontend and backend:
