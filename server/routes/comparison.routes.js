@@ -1,10 +1,10 @@
-const express = require("express");
-const {
+import express from "express";
+import {
   createComparison,
   getComparisons,
   getComparison,
   deleteComparison,
-} = require("../controllers/comparison.controller");
+} from "../controllers/comparison.controller.js";
 
 const router = express.Router();
 
@@ -12,4 +12,4 @@ router.route("/").get(getComparisons).post(createComparison);
 
 router.route("/:id").get(getComparison).delete(deleteComparison);
 
-module.exports = router;
+export default router;

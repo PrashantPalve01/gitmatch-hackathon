@@ -1,7 +1,7 @@
-const Comparison = require("../models/Comparison.model.js");
-const StandardProfile = require("../models/StandardProfile.model");
-const GitHubMetrics = require("../models/GitHubMetrics.model");
-const githubService = require("../services/github.service");
+import Comparison from "../models/Comparison.model.js";
+import StandardProfile from "../models/StandardProfile.model.js";
+import GitHubMetrics from "../models/GitHubMetrics.model.js";
+import githubService from "../services/github.service.js";
 
 // Compare function
 const compareToStandard = (metrics, standardProfile) => {
@@ -192,68 +192,66 @@ const compareToStandard = (metrics, standardProfile) => {
 };
 
 // Create new comparison
-exports.createComparison = async (req, res) => {
+// Update the createComparison function in your comparison controller
+export const createComparison = async (req, res) => {
   try {
-    const { candidate_username, standard_profile_id } = req.body;
+    const { candidate_username, standard_profile_id, user_id } = req.body;
 
-    // Validate request
-    if (!candidate_username || !standard_profile_id) {
-      return res.status(400).json({
-        success: false,
-        error: "Please provide username and standard profile ID",
-      });
-    }
+    // 1. Get GitHub metrics for the candidate
+    const githubAnalytics = await githubService.getGitHubProfileAnalytics(
+      candidate_username
+    );
 
-    // Get standard profile
+    // 2. Get the standard profile for comparison
     const standardProfile = await StandardProfile.findById(standard_profile_id);
 
     if (!standardProfile) {
-      return res.status(404).json({
-        success: false,
-        error: "Standard profile not found",
-      });
+      return res.status(404).json({ message: "Standard profile not found" });
     }
 
-    // Get or calculate GitHub metrics
-    let metrics = await GitHubMetrics.findOne({
-      username: candidate_username,
-      updated_at: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Less than 24 hours old
-    });
+    // 3. Convert GitHub analytics to metrics format
+    const metrics = {
+      commit_frequency:
+        githubAnalytics.commitActivity.averageCommitsPerDay || 0,
+      repository_count: githubAnalytics.repoStats.totalRepos || 0,
+      stars_received: githubAnalytics.repoStats.starsReceived || 0,
+      language_breakdown: githubAnalytics.languageBreakdown.reduce(
+        (obj, lang) => {
+          obj[lang.name] = lang.value;
+          return obj;
+        },
+        {}
+      ),
+      code_quality_estimate: 75.0, // Using a default value since this is hard to calculate
+    };
 
-    if (!metrics) {
-      // Calculate new metrics
-      const calculatedMetrics = await githubService.calculateUserMetrics(
-        candidate_username
-      );
+    // 4. Use the compareToStandard function to generate the comparison result
+    const comparisonResult = compareToStandard(metrics, standardProfile);
 
-      // Save to database
-      metrics = await GitHubMetrics.findOneAndUpdate(
-        { username: candidate_username },
-        calculatedMetrics,
-        { new: true, upsert: true }
-      );
-    }
-
-    // Compare metrics to standard profile
-    const result = compareToStandard(metrics, standardProfile);
-
-    // Create comparison record
-    const comparison = await Comparison.create({
+    // 5. Create and save the comparison
+    const newComparison = new Comparison({
       candidate_username,
       standard_profile: standard_profile_id,
-      result,
+      user_id,
+      result: comparisonResult,
     });
+    const savedComparison = await newComparison.save();
 
-    res.status(201).json(comparison);
+    // 6. Return the saved comparison with its ID
+    res.status(201).json(savedComparison);
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error creating comparison:", error);
+    res
+      .status(500)
+      .json({ message: "Error creating comparison", error: error.message });
   }
 };
-
 // Get all comparisons
-exports.getComparisons = async (req, res) => {
+export const getComparisons = async (req, res) => {
   try {
-    const comparisons = await Comparison.find()
+    const comparisons = await Comparison.find({
+      user_id: req.query.user_id,
+    })
       .populate("standard_profile", "name description")
       .sort({ created_at: -1 });
 
@@ -264,7 +262,7 @@ exports.getComparisons = async (req, res) => {
 };
 
 // Get single comparison
-exports.getComparison = async (req, res) => {
+export const getComparison = async (req, res) => {
   try {
     const comparison = await Comparison.findById(req.params.id).populate(
       "standard_profile"
@@ -276,14 +274,42 @@ exports.getComparison = async (req, res) => {
         .json({ success: false, error: "Comparison not found" });
     }
 
-    res.json(comparison);
+    // Get GitHub profile data for the candidate
+    const candidateProfile = await githubService.getUserProfile(
+      comparison.candidate_username
+    );
+
+    // Get language breakdown for the candidate
+    const repos = await githubService.getUserRepositories(
+      comparison.candidate_username
+    );
+    const languageBreakdown = await githubService.getLanguageBreakdown(repos);
+
+    // Create a response with both the comparison and candidate data
+    const responseData = {
+      ...comparison._doc,
+      candidate: {
+        name: candidateProfile.name || candidateProfile.login,
+        username: candidateProfile.login,
+        avatar_url: candidateProfile.avatar_url,
+        bio: candidateProfile.bio || "",
+        public_repos: candidateProfile.public_repos,
+        followers: candidateProfile.followers,
+      },
+      result: {
+        ...comparison.result,
+        language_breakdown: languageBreakdown.slice(0, 5), // Include top 5 languages
+      },
+    };
+
+    res.json(responseData);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Delete comparison
-exports.deleteComparison = async (req, res) => {
+export const deleteComparison = async (req, res) => {
   try {
     const comparison = await Comparison.findByIdAndDelete(req.params.id);
 

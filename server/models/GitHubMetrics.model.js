@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const GitHubMetricsSchema = new mongoose.Schema({
   username: {
@@ -36,4 +36,4 @@ const GitHubMetricsSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("GitHubMetrics", GitHubMetricsSchema);
+export default mongoose.model("GitHubMetrics", GitHubMetricsSchema);

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/LoginPage.jsx
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Button,
@@ -14,34 +15,182 @@ import {
   Text,
   Link,
   useColorModeValue,
-  Alert,
-  AlertIcon,
+  useToast,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
 } from "@chakra-ui/react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { FaGithub } from "react-icons/fa";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GithubAuthProvider,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { auth } from "../firbase/config";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isResetEmailSent, setIsResetEmailSent] = useState(false);
+  const toast = useToast();
+  const navigate = useNavigate();
+  const cancelRef = useRef();
 
-  const handleLogin = (e) => {
+  useEffect(() => {
+    // Check for remembered email on component mount
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  const showError = (message) => {
+    // Use toast for quick notifications
+    if (message.length < 60) {
+      toast({
+        title: "Error",
+        description: message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top",
+      });
+    } else {
+      // Use AlertDialog for longer messages that need more attention
+      setErrorMessage(message);
+      setErrorDialogOpen(true);
+    }
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // For demo purposes, show success or error
-      if (email.includes("@") && password.length >= 6) {
-        alert("Login successful! Redirecting to dashboard...");
-        window.location.href = "/";
+    try {
+      // Sign in with email and password
+      await signInWithEmailAndPassword(auth, email, password);
+
+      // Set persistence based on "remember me" option
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
       } else {
-        setError("Invalid email or password");
+        localStorage.removeItem("rememberedEmail");
       }
-    }, 1500);
+
+      // Set a flag for authenticated user
+      localStorage.setItem("isLoggedIn", "true");
+
+      toast({
+        title: "Welcome GitHub Recruiter Application!",
+        description: "You've been successfully logged in.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+
+      // Redirect to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error signing in:", error);
+
+      // Format Firebase error messages
+      let friendlyError = "Invalid email or password. Please try again.";
+      if (error.code === "auth/user-not-found") {
+        friendlyError =
+          "No account found with this email. Please check the email or sign up.";
+      } else if (error.code === "auth/wrong-password") {
+        friendlyError =
+          "Incorrect password. Please try again or reset your password.";
+      } else if (error.code === "auth/too-many-requests") {
+        friendlyError =
+          "Access to this account has been temporarily disabled due to many failed login attempts. Reset your password or try again later.";
+      }
+      showError(friendlyError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    setIsLoading(true);
+
+    try {
+      const provider = new GithubAuthProvider();
+      await signInWithPopup(auth, provider);
+
+      // Set a flag for authenticated user
+      localStorage.setItem("isLoggedIn", "true");
+
+      toast({
+        title: "Success!",
+        description: "You've been successfully logged in with GitHub.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+
+      // Redirect to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error with GitHub login:", error);
+
+      // Format GitHub auth errors
+      let friendlyError = error.message;
+      if (error.code === "auth/account-exists-with-different-credential") {
+        friendlyError =
+          "An account already exists with the same email address but different sign-in credentials. Try signing in using email and password.";
+      } else if (error.code === "auth/popup-closed-by-user") {
+        friendlyError = "The sign-in process was cancelled. Please try again.";
+      }
+
+      showError(friendlyError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showError("Please enter your email address to reset your password");
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setIsResetEmailSent(true);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your inbox for instructions to reset your password",
+        status: "info",
+        duration: 5000,
+        isClosable: true,
+        position: "top",
+      });
+    } catch (error) {
+      console.error("Error sending password reset:", error);
+
+      // Format reset password errors
+      let friendlyError = error.message;
+      if (error.code === "auth/user-not-found") {
+        friendlyError = "No account found with this email address.";
+      } else if (error.code === "auth/invalid-email") {
+        friendlyError = "Please enter a valid email address.";
+      }
+
+      showError(friendlyError);
+    }
   };
 
   return (
@@ -62,19 +211,13 @@ const LoginPage = () => {
           boxShadow={{ base: "none", sm: "md" }}
           borderRadius={{ base: "none", sm: "xl" }}
         >
-          {error && (
-            <Alert status="error" mb="6" borderRadius="md">
-              <AlertIcon />
-              {error}
-            </Alert>
-          )}
-
           <Stack spacing="6">
             <Button
               variant="outline"
               leftIcon={<FaGithub />}
               w="full"
-              onClick={() => alert("GitHub OAuth would be implemented here")}
+              onClick={handleGithubLogin}
+              isLoading={isLoading && !email}
             >
               Continue with GitHub
             </Button>
@@ -109,15 +252,29 @@ const LoginPage = () => {
                 </FormControl>
                 <Stack spacing="6">
                   <Stack direction="row" justifyContent="space-between">
-                    <Checkbox defaultChecked>Remember me</Checkbox>
-                    <Link color="brand.500" fontSize="sm">
+                    <Checkbox
+                      isChecked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    >
+                      Remember me
+                    </Checkbox>
+                    <Link
+                      color="brand.500"
+                      fontSize="sm"
+                      onClick={handleForgotPassword}
+                    >
                       Forgot password?
                     </Link>
                   </Stack>
+                  {isResetEmailSent && (
+                    <Text color="green.500" fontSize="sm">
+                      Password reset email sent! Check your inbox.
+                    </Text>
+                  )}
                   <Button
                     type="submit"
                     colorScheme="brand"
-                    isLoading={isLoading}
+                    isLoading={isLoading && email}
                   >
                     Sign in
                   </Button>
@@ -133,6 +290,33 @@ const LoginPage = () => {
           </Link>
         </Text>
       </Stack>
+
+      {/* Error Dialog for detailed error messages */}
+      <AlertDialog
+        isOpen={errorDialogOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={() => setErrorDialogOpen(false)}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Error
+            </AlertDialogHeader>
+
+            <AlertDialogBody>{errorMessage}</AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button
+                ref={cancelRef}
+                onClick={() => setErrorDialogOpen(false)}
+                colorScheme="brand"
+              >
+                OK
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Container>
   );
 };

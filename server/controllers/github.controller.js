@@ -1,7 +1,7 @@
-const GitHubMetrics = require("../models/GitHubMetrics.model");
-const { getUserProfile } = require("../services/github.service");
+import GitHubMetrics from "../models/GitHubMetrics.model.js";
+import { getUserProfile } from "../services/github.service.js";
 
-exports.getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
   try {
     const { username } = req.params;
     const profile = await getUserProfile(username);
@@ -11,7 +11,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-exports.getMetrics = async (req, res) => {
+export const getMetrics = async (req, res) => {
   try {
     const { username } = req.params;
 

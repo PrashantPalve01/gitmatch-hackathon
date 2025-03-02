@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const StandardProfileSchema = new mongoose.Schema({
   name: {
@@ -9,6 +9,11 @@ const StandardProfileSchema = new mongoose.Schema({
   description: {
     type: String,
     required: true,
+  },
+  user_id: {
+    type: String,
+    required: true,
+    index: true, // Add index for faster queries
   },
   metrics: {
     commit_frequency: {
@@ -66,4 +71,4 @@ const StandardProfileSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("StandardProfile", StandardProfileSchema);
+export default mongoose.model("StandardProfile", StandardProfileSchema);

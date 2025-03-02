@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Box,
   Flex,
@@ -14,15 +14,22 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
+  Avatar,
+  Text,
+  useToast,
 } from "@chakra-ui/react";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
   MoonIcon,
   SunIcon,
   HamburgerIcon,
   SettingsIcon,
+  ChevronDownIcon,
 } from "@chakra-ui/icons";
 import { FaGithub } from "react-icons/fa";
+import { signOut } from "firebase/auth";
+import { auth } from "../firbase/config";
+import { AuthContext } from "../App";
 
 const NavLink = ({ to, children, isActive }) => {
   const activeColor = useColorModeValue("brand.600", "brand.300");
@@ -50,8 +57,47 @@ const NavLink = ({ to, children, isActive }) => {
 const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const location = useLocation();
+  const navigate = useNavigate();
+  const toast = useToast();
   const bg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
+  const { currentUser } = useContext(AuthContext);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("isLoggedIn");
+      toast({
+        title: "Logged out successfully",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+    }
+  };
+
+  // Get user's initials for the avatar (if no photoURL)
+  const getUserInitials = () => {
+    if (!currentUser || !currentUser.displayName) return "U";
+
+    const nameParts = currentUser.displayName.split(" ");
+    if (nameParts.length >= 2) {
+      return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+    }
+    return nameParts[0][0].toUpperCase();
+  };
 
   return (
     <Box
@@ -68,7 +114,7 @@ const Header = () => {
         <Flex alignItems="center" justifyContent="space-between">
           <Flex alignItems="center">
             <Heading as="h1" size="lg" color="brand.500" mr="8">
-              <RouterLink to="/">
+              <RouterLink to="/dashboard">
                 <Flex alignItems="center">
                   <FaGithub size="24px" style={{ marginRight: "8px" }} />
                   GitHub Recruiter
@@ -77,7 +123,7 @@ const Header = () => {
             </Heading>
 
             <HStack spacing="4" display={{ base: "none", md: "flex" }}>
-              <NavLink to="/" isActive={location.pathname === "/"}>
+              <NavLink to="/dashboard" isActive={location.pathname === "/"}>
                 Dashboard
               </NavLink>
               <NavLink
@@ -99,6 +145,44 @@ const Header = () => {
               variant="ghost"
             />
 
+            {/* User Profile Menu */}
+            {currentUser && (
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  variant="ghost"
+                  rounded="full"
+                  cursor="pointer"
+                  minW="auto"
+                  rightIcon={<ChevronDownIcon />}
+                >
+                  <Avatar
+                    size="sm"
+                    name={getUserInitials()}
+                    src={currentUser.photoURL || null}
+                    bg="brand.500"
+                  />
+                </MenuButton>
+                <MenuList>
+                  <MenuItem>
+                    <Flex direction="column">
+                      <Text fontWeight="medium">
+                        {currentUser.displayName || "User"}
+                      </Text>
+                      <Text fontSize="sm" color="gray.500">
+                        {currentUser.email}
+                      </Text>
+                    </Flex>
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem as={RouterLink} to="/settings">
+                    Settings
+                  </MenuItem>
+                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                </MenuList>
+              </Menu>
+            )}
+
             <Box display={{ base: "block", md: "none" }}>
               <Menu>
                 <MenuButton
@@ -118,6 +202,9 @@ const Header = () => {
                   <MenuItem as={RouterLink} to="/settings">
                     Settings
                   </MenuItem>
+                  {currentUser && (
+                    <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                  )}
                 </MenuList>
               </Menu>
             </Box>

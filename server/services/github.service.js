@@ -1,4 +1,13 @@
 import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
+
+// At the top of your github service file
+if (!process.env.GITHUB_TOKEN) {
+  console.error(
+    "Warning: GITHUB_TOKEN not found in environment. GitHub API requests will be rate-limited."
+  );
+}
 
 const githubApi = axios.create({
   baseURL: "https://api.github.com",
@@ -74,26 +83,27 @@ function calculateLanguageBreakdown(repos) {
 
 // Basic error handling for API calls
 const handleError = (error) => {
+  let errorMessage = "Unknown error occurred";
+
   if (error.response) {
-    // GitHub API error responses
     if (error.response.status === 404) {
-      throw new Error("GitHub user not found");
+      errorMessage = "GitHub user not found";
     } else if (error.response.status === 403) {
-      throw new Error(
-        "API rate limit exceeded. Try again later or use an API token."
-      );
+      errorMessage =
+        "API rate limit exceeded. Try again later or use an API token.";
     } else {
-      throw new Error(
-        `GitHub API error: ${error.response.data.message || "Unknown error"}`
-      );
+      errorMessage = `GitHub API error: ${
+        error.response.data.message || "Unknown error"
+      }`;
     }
   } else if (error.request) {
-    throw new Error(
-      "No response received from GitHub. Check your network connection."
-    );
+    errorMessage =
+      "No response received from GitHub. Check your network connection.";
   } else {
-    throw new Error(`Error setting up request: ${error.message}`);
+    errorMessage = `Error setting up request: ${error.message}`;
   }
+
+  return { error: true, message: errorMessage };
 };
 
 // Fetch basic user profile data
@@ -102,7 +112,8 @@ export const getUserProfile = async (username) => {
     const response = await githubApi.get(`/users/${username}`);
     return response.data;
   } catch (error) {
-    handleError(error);
+    console.log("Something went wrong", error.message);
+    throw handleError(error); // Propagate the error
   }
 };
 

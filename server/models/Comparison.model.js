@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const ComparisonSchema = new mongoose.Schema({
   candidate_username: {
@@ -10,6 +10,11 @@ const ComparisonSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "StandardProfile",
     required: true,
+  },
+  user_id: {
+    type: String, // Firebase UID is a string
+    required: true,
+    index: true, // Add an index for faster queries
   },
   result: {
     overall_score: {
@@ -38,4 +43,4 @@ const ComparisonSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Comparison", ComparisonSchema);
+export default mongoose.model("Comparison", ComparisonSchema);

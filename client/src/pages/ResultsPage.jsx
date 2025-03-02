@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Box,
   Heading,
@@ -25,6 +25,8 @@ import {
   ListItem,
   ListIcon,
   useColorModeValue,
+  Center,
+  Spinner,
 } from "@chakra-ui/react";
 import {
   CheckCircleIcon,
@@ -43,94 +45,146 @@ import {
   PolarRadiusAxis,
   Tooltip,
 } from "recharts";
-
-// Mock data for development
-const mockComparisonResult = {
-  id: "123",
-  candidate: {
-    username: "johndoe123",
-    name: "John Doe",
-    avatar_url: "https://via.placeholder.com/150",
-    public_repos: 32,
-    followers: 156,
-    bio: "Senior JavaScript Developer with a passion for React and Node.js",
-  },
-  standard_profile: {
-    id: "2",
-    name: "Mid-level Full Stack Developer",
-  },
-  result: {
-    overall_score: 82,
-    recommendation: "Hire",
-    metrics: {
-      commit_frequency: 85,
-      code_quality: 78,
-      language_proficiency: 90,
-      project_diversity: 75,
-      community_engagement: 80,
-    },
-    strengths: [
-      "Strong JavaScript and React expertise",
-      "Consistent commit history over the past year",
-      "Good code quality in public repositories",
-      "Active contributor to open source projects",
-    ],
-    weaknesses: [
-      "Limited backend experience compared to frontend",
-      "Could improve documentation in repositories",
-    ],
-    language_breakdown: [
-      { name: "JavaScript", value: 65 },
-      { name: "TypeScript", value: 20 },
-      { name: "HTML/CSS", value: 10 },
-      { name: "Python", value: 5 },
-    ],
-  },
-};
+import { getComparison } from "../services/api";
 
 const ResultsPage = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const navigate = useNavigate();
 
   const cardBg = useColorModeValue("white", "gray.700");
-  const successBg = useColorModeValue("green.50", "green.900");
-  const dangerBg = useColorModeValue("red.50", "red.900");
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setData(mockComparisonResult);
-      setLoading(false);
-    }, 1000);
+    const fetchComparisonData = async () => {
+      try {
+        const result = await getComparison(id);
+        setData(result);
+      } catch (err) {
+        console.error("Error fetching comparison:", err);
+        setError("Failed to load comparison results");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComparisonData();
   }, [id]);
 
   if (loading) {
     return (
+      <Center h="100vh">
+        <VStack spacing={4}>
+          <Spinner size="xl" color="brand.500" thickness="4px" />
+          <Text>Loading comparison results...</Text>
+        </VStack>
+      </Center>
+    );
+  }
+
+  if (error) {
+    return (
       <Box textAlign="center" py="16">
-        <Heading size="lg">Loading results...</Heading>
-        <Progress
-          size="xs"
-          isIndeterminate
-          colorScheme="brand"
-          maxW="400px"
-          mx="auto"
-          mt="4"
-        />
+        <Heading size="lg" color="red.500">
+          Error
+        </Heading>
+        <Text mt="4">{error}</Text>
+        <Button mt="6" onClick={() => navigate("/dashboard")}>
+          Return to Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
+  // Defensive checks
+  if (!data || !data.candidate || !data.result) {
+    return (
+      <Box textAlign="center" py="16">
+        <Heading size="lg" color="red.500">
+          Incomplete Data
+        </Heading>
+        <Text mt="4">The comparison data is incomplete or unavailable.</Text>
+        <Button mt="6" onClick={() => navigate("/dashboard")}>
+          Return to Dashboard
+        </Button>
       </Box>
     );
   }
 
   // Transform metrics for radar chart
-  const radarData = Object.entries(data.result.metrics).map(([key, value]) => ({
-    subject: key
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" "),
-    candidate: value,
-    average: 70, // Mock average value, would come from backend in real app
-    fullMark: 100,
-  }));
+  const radarData = data.result.metrics_breakdown
+    ? Object.entries(data.result.metrics_breakdown).map(([key, detail]) => ({
+        subject: key
+          .split("_")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "),
+        candidate: detail.score || 0,
+        average: detail.average || 70,
+        fullMark: 100,
+      }))
+    : [];
+
+  // Safely extract repository and commit metrics
+  const repoStars =
+    data.result.metrics_breakdown?.stars_received?.description?.split(" ")[0] ||
+    "N/A";
+  const commitFrequency =
+    data.result.metrics_breakdown?.commit_frequency?.description?.split(
+      " "
+    )[0] || "N/A";
+
+  const getRecommendationStyles = (recommendation) => {
+    switch (recommendation) {
+      case "Hire":
+        return {
+          bg: useColorModeValue("green.50", "green.900"),
+          color: "green.500",
+          badgeColorScheme: "green",
+        };
+      case "Consider":
+        return {
+          bg: useColorModeValue("yellow.50", "yellow.900"),
+          color: "yellow.600",
+          badgeColorScheme: "yellow",
+        };
+      case "No Hire":
+        return {
+          bg: useColorModeValue("red.50", "red.900"),
+          color: "red.500",
+          badgeColorScheme: "red",
+        };
+      default:
+        return {
+          bg: useColorModeValue("gray.50", "gray.900"),
+          color: "gray.500",
+          badgeColorScheme: "gray",
+        };
+    }
+  };
+  const recommendationStyles = getRecommendationStyles(
+    data.result.recommendation
+  );
+
+  const exportResults = () => {
+    // Convert data to JSON or CSV
+    const exportData = JSON.stringify(data, null, 2);
+
+    // Create a Blob
+    const blob = new Blob([exportData], { type: "application/json" });
+
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `github_profile_analysis_${data.candidate.username}.json`;
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <Box>
@@ -140,7 +194,7 @@ const ResultsPage = () => {
             leftIcon={<ArrowBackIcon />}
             variant="ghost"
             mb="2"
-            onClick={() => window.history.back()}
+            onClick={() => navigate("/dashboard")}
           >
             Back to Dashboard
           </Button>
@@ -153,6 +207,7 @@ const ResultsPage = () => {
           rightIcon={<DownloadIcon />}
           colorScheme="brand"
           variant="outline"
+          onClick={exportResults}
         >
           Export Results
         </Button>
@@ -187,24 +242,14 @@ const ResultsPage = () => {
         </Card>
 
         {/* Overall Result Card */}
-        <Card
-          bg={data.result.recommendation === "Hire" ? successBg : dangerBg}
-          boxShadow="md"
-        >
+        <Card bg={recommendationStyles.bg} boxShadow="md">
           <CardHeader pb="2">
             <Heading size="md">Overall Recommendation</Heading>
           </CardHeader>
           <CardBody>
             <VStack spacing="4" align="stretch">
               <Flex justify="space-between" align="center">
-                <Heading
-                  size="2xl"
-                  color={
-                    data.result.recommendation === "Hire"
-                      ? "green.500"
-                      : "red.500"
-                  }
-                >
+                <Heading size="2xl" color={recommendationStyles.color}>
                   {data.result.recommendation}
                 </Heading>
                 <Badge
@@ -212,17 +257,15 @@ const ResultsPage = () => {
                   py="2"
                   px="4"
                   borderRadius="lg"
-                  colorScheme={
-                    data.result.recommendation === "Hire" ? "green" : "red"
-                  }
+                  colorScheme={recommendationStyles.badgeColorScheme}
                 >
-                  {data.result.overall_score}/100
+                  {Math.floor(data.result.overall_score)}/100
                 </Badge>
               </Flex>
 
               <Text>
                 Compared to standard profile:{" "}
-                <strong>{data.standard_profile.name}</strong>
+                <strong>{data.standard_profile?.name || "N/A"}</strong>
               </Text>
 
               <Divider />
@@ -232,7 +275,7 @@ const ResultsPage = () => {
                   Key Strengths:
                 </Text>
                 <List spacing={1}>
-                  {data.result.strengths.map((strength, index) => (
+                  {data.result.strengths?.map((strength, index) => (
                     <ListItem key={index} display="flex" alignItems="center">
                       <ListIcon as={CheckCircleIcon} color="green.500" />
                       {strength}
@@ -241,7 +284,7 @@ const ResultsPage = () => {
                 </List>
               </Box>
 
-              {data.result.weaknesses.length > 0 && (
+              {data.result.weaknesses && data.result.weaknesses.length > 0 && (
                 <Box>
                   <Text fontWeight="bold" mb="1">
                     Areas for Improvement:
@@ -341,7 +384,7 @@ const ResultsPage = () => {
               <StatLabel display="flex" alignItems="center">
                 <Icon as={FaStar} mr="2" /> Repository Stars
               </StatLabel>
-              <StatNumber>1,245</StatNumber>
+              <StatNumber>{repoStars}</StatNumber>
               <StatHelpText>Across all repositories</StatHelpText>
             </Stat>
 
@@ -355,8 +398,8 @@ const ResultsPage = () => {
               <StatLabel display="flex" alignItems="center">
                 <Icon as={FaCodeBranch} mr="2" /> Commit Frequency
               </StatLabel>
-              <StatNumber>4.8</StatNumber>
-              <StatHelpText>Average commits per day</StatHelpText>
+              <StatNumber>{commitFrequency}</StatNumber>
+              <StatHelpText>Average commits per repo</StatHelpText>
             </Stat>
           </VStack>
         </SimpleGrid>
@@ -367,8 +410,7 @@ const ResultsPage = () => {
           rightIcon={<ChevronRightIcon />}
           colorScheme="brand"
           size="lg"
-          as="a"
-          href="/new-comparison"
+          onClick={() => navigate("/new-comparison")}
         >
           Start New Comparison
         </Button>

@@ -21,8 +21,9 @@ import {
   Radio,
   RadioGroup,
   Stack,
+  Center,
 } from "@chakra-ui/react";
-import { SearchIcon, InfoIcon } from "@chakra-ui/icons";
+import { SearchIcon, InfoIcon, SettingsIcon } from "@chakra-ui/icons";
 import { FaGithub } from "react-icons/fa";
 import {
   getGitHubProfile,
@@ -39,6 +40,7 @@ const NewComparison = () => {
   const [previewData, setPreviewData] = useState(null);
   const [error, setError] = useState(null);
   const [standardProfiles, setStandardProfiles] = useState([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
 
   const navigate = useNavigate();
   const cardBg = useColorModeValue("white", "gray.700");
@@ -46,15 +48,18 @@ const NewComparison = () => {
   // Fetch standard profiles on component mount
   useEffect(() => {
     const fetchStandardProfiles = async () => {
+      setIsLoadingProfiles(true);
       try {
         const profiles = await getStandardProfiles();
         setStandardProfiles(profiles);
         if (profiles.length > 0) {
-          setSelectedProfile(profiles[0].id);
+          setSelectedProfile(profiles[0]._id);
         }
       } catch (err) {
         console.error("Failed to fetch standard profiles:", err);
         setError("Failed to load standard profiles. Please try again later.");
+      } finally {
+        setIsLoadingProfiles(false);
       }
     };
 
@@ -75,17 +80,23 @@ const NewComparison = () => {
       const profileData = await getGitHubProfile(githubUsername);
       setPreviewData(profileData);
     } catch (err) {
-      console.error("Error fetching GitHub profile:", err);
-      setError("GitHub user not found");
+      setError(
+        "GitHub user not found or something went wrong please try again"
+      );
       setPreviewData(null);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Handle form submission
+  const handleProfileChange = (value) => {
+    console.log("Profile selected:", value);
+    setSelectedProfile(value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!previewData) {
       handleSearch();
       return;
@@ -100,19 +111,26 @@ const NewComparison = () => {
 
     try {
       // Create a new comparison
-      const result = await createComparison({
+      const comparisonResult = await createComparison({
         githubUsername: githubUsername,
         standardProfileId: selectedProfile,
       });
 
       // Navigate to results page with the comparison ID
-      navigate(`/results/${result.id}`);
+      navigate(`/results/${comparisonResult._id}`);
     } catch (err) {
       console.error("Error creating comparison:", err);
       setError("Failed to create comparison. Please try again.");
       setIsLoading(false);
     }
   };
+
+  const navigateToSettings = () => {
+    navigate("/settings");
+  };
+
+  const isButtonDisabled =
+    !previewData || isLoading || !standardProfiles.length || !selectedProfile;
 
   return (
     <Box>
@@ -199,47 +217,77 @@ const NewComparison = () => {
               <Heading size="md" mb="4">
                 Select Standard Profile
               </Heading>
-              <Text mb="4">
-                Choose a standard profile to compare against. Each profile
-                represents different expectations for a specific role or
-                experience level.
-              </Text>
 
-              <FormControl as="fieldset" isRequired>
-                <FormLabel as="legend">Standard Profile</FormLabel>
-                <RadioGroup
-                  value={selectedProfile}
-                  onChange={setSelectedProfile}
-                >
-                  <Stack spacing="4">
-                    {standardProfiles.map((profile) => (
-                      <Card
-                        key={profile.id}
-                        variant="outline"
-                        borderColor={
-                          selectedProfile === profile.id
-                            ? "brand.500"
-                            : "gray.200"
-                        }
-                        borderWidth={
-                          selectedProfile === profile.id ? "2px" : "1px"
-                        }
-                      >
-                        <CardBody py="3">
-                          <Radio value={profile.id} colorScheme="brand">
-                            <Box ml="2">
-                              <Text fontWeight="bold">{profile.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {profile.description}
-                              </Text>
-                            </Box>
-                          </Radio>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </Stack>
-                </RadioGroup>
-              </FormControl>
+              {isLoadingProfiles ? (
+                <Center p="6">
+                  <Text>Loading profiles...</Text>
+                </Center>
+              ) : standardProfiles.length > 0 ? (
+                <>
+                  <Text mb="4">
+                    Choose a standard profile to compare against. Each profile
+                    represents different expectations for a specific role or
+                    experience level.
+                  </Text>
+
+                  <FormControl as="fieldset" isRequired>
+                    <FormLabel as="legend">Standard Profile</FormLabel>
+                    <RadioGroup
+                      value={selectedProfile}
+                      onChange={handleProfileChange}
+                    >
+                      <Stack spacing="4">
+                        {standardProfiles.map((profile) => (
+                          <Card
+                            key={profile._id}
+                            variant="outline"
+                            borderColor={
+                              selectedProfile === profile._id
+                                ? "brand.500"
+                                : "gray.200"
+                            }
+                            borderWidth={
+                              selectedProfile === profile._id ? "2px" : "1px"
+                            }
+                            onClick={() => handleProfileChange(profile._id)}
+                            cursor="pointer"
+                          >
+                            <CardBody py="3">
+                              <Radio
+                                value={profile._id}
+                                colorScheme="brand"
+                                isChecked={selectedProfile === profile._id}
+                              >
+                                <Box ml="2">
+                                  <Text fontWeight="bold">{profile.name}</Text>
+                                  <Text fontSize="sm" color="gray.500">
+                                    {profile.description}
+                                  </Text>
+                                </Box>
+                              </Radio>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </Stack>
+                    </RadioGroup>
+                  </FormControl>
+                </>
+              ) : (
+                <Box textAlign="center" py="8">
+                  <Alert status="warning" borderRadius="md" mb="6">
+                    <AlertIcon />
+                    No standard profiles available. You need to create at least
+                    one profile to make comparisons.
+                  </Alert>
+                  <Button
+                    colorScheme="brand"
+                    size="md"
+                    onClick={navigateToSettings}
+                  >
+                    Go to Create Profiles
+                  </Button>
+                </Box>
+              )}
             </CardBody>
           </Card>
 
@@ -250,7 +298,7 @@ const NewComparison = () => {
               colorScheme="brand"
               size="lg"
               px="12"
-              isDisabled={!previewData || isLoading || !selectedProfile}
+              isDisabled={isButtonDisabled || standardProfiles.length === 0}
               isLoading={isLoading}
             >
               Start Comparison

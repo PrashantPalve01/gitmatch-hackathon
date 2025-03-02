@@ -1,15 +1,13 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
-const githubRoutes = require("./routes/github.routes");
-const comparisonRoutes = require("./routes/comparison.routes");
-const standardProfileRoutes = require("./routes/standardProfile.routes");
-
-// Load env vars
-dotenv.config();
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import connectDB from "./config/db.js";
+import githubRoutes from "./routes/github.routes.js";
+import comparisonRoutes from "./routes/comparison.routes.js";
+import standardProfileRoutes from "./routes/standardProfile.routes.js";
 
 // Connect to database
+dotenv.config();
 connectDB();
 
 const app = express();

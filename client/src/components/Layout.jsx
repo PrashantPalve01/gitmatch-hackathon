@@ -1,8 +1,9 @@
 import React from "react";
 import { Box, Flex, Container, useColorModeValue } from "@chakra-ui/react";
 import Header from "./Header";
+import { Outlet } from "react-router-dom";
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const bgColor = useColorModeValue("gray.50", "gray.900");
 
   return (
@@ -11,7 +12,7 @@ const Layout = ({ children }) => {
       <Container maxW="container.xl" pt="20" pb="10">
         <Flex direction="column" flex="1">
           <Box as="main" flex="1" py="6">
-            {children}
+            <Outlet />
           </Box>
           <Box
             as="footer"

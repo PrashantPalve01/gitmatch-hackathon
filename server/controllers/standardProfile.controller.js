@@ -1,9 +1,11 @@
-const StandardProfile = require("../models/StandardProfile.model");
+import StandardProfile from "../models/StandardProfile.model.js";
 
 // Get all standard profiles
-exports.getProfiles = async (req, res) => {
+export const getProfiles = async (req, res) => {
   try {
-    const profiles = await StandardProfile.find().sort({ created_at: -1 });
+    const profiles = await StandardProfile.find({
+      user_id: req.query.user_id,
+    }).sort({ created_at: -1 });
     res.json(profiles);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -11,7 +13,7 @@ exports.getProfiles = async (req, res) => {
 };
 
 // Get single profile
-exports.getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
   try {
     const profile = await StandardProfile.findById(req.params.id);
 
@@ -28,17 +30,18 @@ exports.getProfile = async (req, res) => {
 };
 
 // Create profile
-exports.createProfile = async (req, res) => {
+export const createProfile = async (req, res) => {
   try {
     const profile = await StandardProfile.create(req.body);
     res.status(201).json(profile);
   } catch (error) {
+    console.error("Profile creation error:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
 
 // Update profile
-exports.updateProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
     const profile = await StandardProfile.findByIdAndUpdate(
       req.params.id,
@@ -59,7 +62,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // Delete profile
-exports.deleteProfile = async (req, res) => {
+export const deleteProfile = async (req, res) => {
   try {
     const profile = await StandardProfile.findByIdAndDelete(req.params.id);
 
