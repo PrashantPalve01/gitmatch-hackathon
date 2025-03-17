@@ -13,7 +13,7 @@ const StandardProfileSchema = new mongoose.Schema({
   user_id: {
     type: String,
     required: true,
-    index: true, // Add index for faster queries
+    index: true,
   },
   metrics: {
     commit_frequency: {
@@ -23,7 +23,7 @@ const StandardProfileSchema = new mongoose.Schema({
     language_requirements: [
       {
         language: String,
-        proficiency: Number, // percentage from 0-100
+        proficiency: Number,
       },
     ],
     repository_count: {

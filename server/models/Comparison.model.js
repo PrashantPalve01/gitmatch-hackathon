@@ -12,9 +12,9 @@ const ComparisonSchema = new mongoose.Schema({
     required: true,
   },
   user_id: {
-    type: String, // Firebase UID is a string
+    type: String,
     required: true,
-    index: true, // Add an index for faster queries
+    index: true,
   },
   result: {
     overall_score: {

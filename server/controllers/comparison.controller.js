@@ -1,6 +1,5 @@
 import Comparison from "../models/Comparison.model.js";
 import StandardProfile from "../models/StandardProfile.model.js";
-import GitHubMetrics from "../models/GitHubMetrics.model.js";
 import githubService from "../services/github.service.js";
 
 // Compare function
@@ -191,8 +190,6 @@ const compareToStandard = (metrics, standardProfile) => {
   return result;
 };
 
-// Create new comparison
-// Update the createComparison function in your comparison controller
 export const createComparison = async (req, res) => {
   try {
     const { candidate_username, standard_profile_id, user_id } = req.body;
@@ -222,7 +219,7 @@ export const createComparison = async (req, res) => {
         },
         {}
       ),
-      code_quality_estimate: 75.0, // Using a default value since this is hard to calculate
+      code_quality_estimate: 75.0,
     };
 
     // 4. Use the compareToStandard function to generate the comparison result
