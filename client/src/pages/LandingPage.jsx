@@ -12,10 +12,6 @@ import {
   Image,
   Card,
   CardBody,
-  Badge,
-  List,
-  ListItem,
-  ListIcon,
   useColorModeValue,
   chakra,
 } from "@chakra-ui/react";
@@ -96,10 +92,15 @@ const LandingPage = () => {
             </Box>
             <Flex justify="center" align="center">
               <Image
-                src="/api/placeholder/600/400"
+                src="/dashboard.png"
                 alt="GitHub Recruiter Dashboard"
                 borderRadius="xl"
                 shadow="2xl"
+                transform={{ base: "scale(1)", md: "scale(1.05)" }}
+                transition="transform 0.3s ease"
+                _hover={{
+                  transform: { base: "scale(1.02)", md: "scale(1.08)" },
+                }}
               />
             </Flex>
           </SimpleGrid>
@@ -373,164 +374,6 @@ const LandingPage = () => {
           </Card>
         </SimpleGrid>
       </Container>
-
-      {/* Pricing Section */}
-      <Box bg={useColorModeValue("gray.100", "gray.800")} py="16">
-        <Container maxW="container.xl">
-          <Heading textAlign="center" mb="4">
-            Pricing Plans
-          </Heading>
-          <Text textAlign="center" maxW="container.md" mx="auto" mb="12">
-            Choose the right plan for your hiring needs. All plans include
-            access to basic GitHub metrics and standard profiles.
-          </Text>
-
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing="10">
-            <Card
-              bg={cardBg}
-              shadow="lg"
-              borderColor="gray.200"
-              borderWidth="1px"
-            >
-              <CardBody p="6">
-                <Badge colorScheme="blue" mb="2">
-                  Basic
-                </Badge>
-                <Heading size="xl" mb="2">
-                  $0
-                </Heading>
-                <Text color="gray.500" mb="6">
-                  Free forever
-                </Text>
-
-                <List spacing="3" mb="8">
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />5 profile
-                    analyses per month
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />3
-                    standard profiles
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Basic metrics and charts
-                  </ListItem>
-                </List>
-
-                <Button
-                  as={RouterLink}
-                  to="/signup"
-                  colorScheme="brand"
-                  variant="outline"
-                  w="full"
-                >
-                  Sign Up Free
-                </Button>
-              </CardBody>
-            </Card>
-
-            <Card
-              bg={cardBg}
-              shadow="lg"
-              borderColor="brand.500"
-              borderWidth="2px"
-              transform={{ base: "none", md: "scale(1.05)" }}
-            >
-              <CardBody p="6">
-                <Badge colorScheme="brand" mb="2">
-                  Pro
-                </Badge>
-                <Heading size="xl" mb="2">
-                  $49
-                </Heading>
-                <Text color="gray.500" mb="6">
-                  per month
-                </Text>
-
-                <List spacing="3" mb="8">
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    <Text as="span" fontWeight="bold">
-                      Unlimited
-                    </Text>{" "}
-                    profile analyses
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    10 custom standard profiles
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Advanced metrics and insights
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Export results and reports
-                  </ListItem>
-                </List>
-
-                <Button
-                  as={RouterLink}
-                  to="/signup?plan=pro"
-                  colorScheme="brand"
-                  w="full"
-                >
-                  Get Started
-                </Button>
-              </CardBody>
-            </Card>
-
-            <Card
-              bg={cardBg}
-              shadow="lg"
-              borderColor="gray.200"
-              borderWidth="1px"
-            >
-              <CardBody p="6">
-                <Badge colorScheme="purple" mb="2">
-                  Enterprise
-                </Badge>
-                <Heading size="xl" mb="2">
-                  Custom
-                </Heading>
-                <Text color="gray.500" mb="6">
-                  tailored pricing
-                </Text>
-
-                <List spacing="3" mb="8">
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Everything in Pro plan
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Unlimited standard profiles
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    ATS integration
-                  </ListItem>
-                  <ListItem>
-                    <ListIcon as={CheckCircleIcon} color="green.500" />
-                    Dedicated account manager
-                  </ListItem>
-                </List>
-
-                <Button
-                  as={RouterLink}
-                  to="/contact"
-                  colorScheme="purple"
-                  variant="outline"
-                  w="full"
-                >
-                  Contact Sales
-                </Button>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-        </Container>
-      </Box>
 
       {/* CTA Section */}
       <Box bgGradient={brandGradient} color="white" py="16">

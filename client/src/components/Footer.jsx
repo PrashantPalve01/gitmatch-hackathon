@@ -1,5 +1,11 @@
 import React from "react";
-import { FaGithub, FaCode } from "react-icons/fa";
+import {
+  FaGithub,
+  FaCode,
+  FaUsers,
+  FaSearch,
+  FaDatabase,
+} from "react-icons/fa";
 import {
   Box,
   Container,
@@ -10,6 +16,7 @@ import {
   Stack,
   Icon,
   useColorModeValue,
+  Divider,
 } from "@chakra-ui/react";
 
 const Footer = () => {
@@ -22,7 +29,8 @@ const Footer = () => {
               GitHub Recruiter
             </Heading>
             <Text fontSize="sm" mb="6" opacity="0.8">
-              Making technical hiring objective and data-driven since 2023.
+              A hackathon project showcasing data-driven recruitment through
+              GitHub analytics and algorithmic matching.
             </Text>
             <Flex>
               <Icon as={FaGithub} boxSize="6" mr="4" cursor="pointer" />
@@ -32,42 +40,69 @@ const Footer = () => {
 
           <Box>
             <Heading size="sm" mb="4">
-              Product
+              Current Features
             </Heading>
             <Stack spacing="2" fontSize="sm">
-              <Text cursor="pointer">Features</Text>
-              <Text cursor="pointer">Pricing</Text>
-              <Text cursor="pointer">Case Studies</Text>
-              <Text cursor="pointer">Testimonials</Text>
+              <Flex align="center">
+                <Icon as={FaGithub} mr="2" />
+                <Text>GitHub Integration</Text>
+              </Flex>
+              <Flex align="center">
+                <Icon as={FaUsers} mr="2" />
+                <Text>Profile Comparison</Text>
+              </Flex>
+              <Flex align="center">
+                <Icon as={FaCode} mr="2" />
+                <Text>Language Analysis</Text>
+              </Flex>
+              <Flex align="center">
+                <Icon as={FaSearch} mr="2" />
+                <Text>Candidate Search</Text>
+              </Flex>
             </Stack>
           </Box>
 
           <Box>
             <Heading size="sm" mb="4">
-              Resources
+              Technology Stack
             </Heading>
             <Stack spacing="2" fontSize="sm">
-              <Text cursor="pointer">Documentation</Text>
-              <Text cursor="pointer">API Reference</Text>
-              <Text cursor="pointer">Blog</Text>
-              <Text cursor="pointer">Guides</Text>
+              <Text>React.js + Chakra UI</Text>
+              <Text>Node.js + Express.js</Text>
+              <Text>MongoDB Database</Text>
+              <Text>GitHub REST API</Text>
+              <Text>Algorithmic Scoring</Text>
             </Stack>
           </Box>
 
           <Box>
             <Heading size="sm" mb="4">
-              Company
+              Project Info
             </Heading>
             <Stack spacing="2" fontSize="sm">
-              <Text cursor="pointer">About Us</Text>
-              <Text cursor="pointer">Careers</Text>
-              <Text cursor="pointer">Contact</Text>
-              <Text cursor="pointer">Privacy Policy</Text>
+              <Text>48-Hour Hackathon Build</Text>
+              <Text>MERN Stack Implementation</Text>
+              <Text>Real GitHub Data Analysis</Text>
+              <Text>Weighted Recommendation Engine</Text>
+              <Text opacity="0.7">AI Features Coming Soon</Text>
             </Stack>
           </Box>
         </SimpleGrid>
 
-        {/* <Divider my="8" opacity="0.2" /> */}
+        <Divider my="8" opacity="0.2" />
+
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify="space-between"
+          align="center"
+          fontSize="sm"
+          opacity="0.7"
+        >
+          <Text>© 2025 GitHub Recruiter - Hackathon Project</Text>
+          <Text mt={{ base: "2", md: "0" }}>
+            Built with ❤️ using GitHub API & Algorithmic Intelligence
+          </Text>
+        </Flex>
       </Container>
     </Box>
   );

@@ -5,7 +5,6 @@ import {
   Container,
   Button,
   HStack,
-  Image,
   useColorModeValue,
   Link,
 } from "@chakra-ui/react";
@@ -44,9 +43,6 @@ const PublicLayout = () => {
             <HStack spacing="8" display={{ base: "none", md: "flex" }}>
               <Link as={RouterLink} to="/features" fontWeight="medium">
                 Features
-              </Link>
-              <Link as={RouterLink} to="/pricing" fontWeight="medium">
-                Pricing
               </Link>
               <Link as={RouterLink} to="/about" fontWeight="medium">
                 About

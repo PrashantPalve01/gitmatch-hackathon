@@ -27,7 +27,6 @@ import SignupPage from "./pages/SignupPage";
 
 // Import or create additional public pages
 import Features from "./pages/Features";
-import Pricing from "./pages/Pricing";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 
@@ -84,7 +83,6 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/features" element={<Features />} />
-                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
               </Route>
